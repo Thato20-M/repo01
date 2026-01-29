@@ -118,7 +118,7 @@ if page == "🏠 Dashboard":
             overall = sum(all_averages) / len(all_averages)
             st.markdown(
                 f"""
-                <div style="background:#1f2a44;padding:25px;border-radius:16px;color:white;text-align:center">
+                <div style="background:#1f2a44;padding:25px;border-radius:16px;color:#2e5585;text-align:center">
                     <h2>Overall Academic Average</h2>
                     <h1>{overall:.2f}%</h1>
                     <p>{performance_label(overall)}</p>

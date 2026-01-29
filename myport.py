@@ -20,7 +20,7 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    .main { background-color: #f5f7fb; }
+    .main { background-color: #9bc4eb; }
     .block-container { padding-top: 1.5rem; }
     h1, h2, h3 { color: #1f2a44; }
     .stMetric { background: white; padding: 15px; border-radius: 12px; }

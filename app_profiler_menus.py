@@ -1,135 +1,216 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
+import datetime
+import matplotlib.pyplot as plt
 
-# Set page title
-st.set_page_config(page_title="Researcher Profile and STEM Data Explorer", layout="wide")
+# -----------------------------
+# App Configuration
+# -----------------------------
+st.set_page_config(
+    page_title="Academic Progress Tracker",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# Sidebar Menu
+# -----------------------------
+# Session State Initialization
+# -----------------------------
+if "profile" not in st.session_state:
+    st.session_state.profile = {
+        "name": "",
+        "email": "",
+        "programme": ""
+    }
+
+if "semesters" not in st.session_state:
+    # Structure:
+    # {semester_name: {module_name: DataFrame}}
+    st.session_state.semesters = {}
+
+if "achievements" not in st.session_state:
+    st.session_state.achievements = []
+
+if "events" not in st.session_state:
+    st.session_state.events = []
+
+# -----------------------------
+# Helper Functions
+# -----------------------------
+
+def calculate_weighted_average(df):
+    if df.empty:
+        return 0
+    if "Weight" in df.columns:
+        return (df["Mark"] * df["Weight"]).sum() / df["Weight"].sum()
+    return df["Mark"].mean()
+
+
+def performance_trend(avg):
+    if avg >= 70:
+        return "Strong performance 👍"
+    elif avg >= 50:
+        return "Stable but needs improvement ⚠️"
+    else:
+        return "At risk 🚨"
+
+
+def study_tips(avg):
+    if avg >= 70:
+        return "Maintain consistency, practice past papers, and help peers."
+    elif avg >= 50:
+        return "Increase weekly study hours, focus on weak topics, and revise actively."
+    else:
+        return "Seek academic support, restructure study plan, and prioritize this module."
+
+# -----------------------------
+# Sidebar Navigation
+# -----------------------------
 st.sidebar.title("Navigation")
-menu = st.sidebar.radio(
-    "Go to:",
-    ["Researcher Profile", "Publications", "STEM Data Explorer", "Contact"],
+page = st.sidebar.radio(
+    "Go to",
+    ["Dashboard", "Profile", "Semesters & Modules", "Achievements", "Calendar", "Chatbot"]
 )
 
-# Dummy STEM data
-physics_data = pd.DataFrame({
-    "Experiment": ["Alpha Decay", "Beta Decay", "Gamma Ray Analysis", "Quark Study", "Higgs Boson"],
-    "Energy (MeV)": [4.2, 1.5, 2.9, 3.4, 7.1],
-    "Date": pd.date_range(start="2024-01-01", periods=5),
-})
+# -----------------------------
+# Profile Page
+# -----------------------------
+if page == "Profile":
+    st.title("Student Profile")
 
-astronomy_data = pd.DataFrame({
-    "Celestial Object": ["Mars", "Venus", "Jupiter", "Saturn", "Moon"],
-    "Brightness (Magnitude)": [-2.0, -4.6, -1.8, 0.2, -12.7],
-    "Observation Date": pd.date_range(start="2024-01-01", periods=5),
-})
+    st.session_state.profile["name"] = st.text_input("Full Name", st.session_state.profile["name"])
+    st.session_state.profile["email"] = st.text_input("Email", st.session_state.profile["email"])
+    st.session_state.profile["programme"] = st.text_input("Degree / Programme", st.session_state.profile["programme"])
 
-weather_data = pd.DataFrame({
-    "City": ["Cape Town", "London", "New York", "Tokyo", "Sydney"],
-    "Temperature (°C)": [25, 10, -3, 15, 30],
-    "Humidity (%)": [65, 70, 55, 80, 50],
-    "Recorded Date": pd.date_range(start="2024-01-01", periods=5),
-})
+    st.success("Profile updated successfully")
 
-# Sections based on menu selection
-if menu == "Researcher Profile":
-    st.title("Researcher Profile")
-    st.sidebar.header("Profile Options")
+# -----------------------------
+# Semesters & Modules Page
+# -----------------------------
+elif page == "Semesters & Modules":
+    st.title("Academic Progress Tracking")
 
-    # Collect basic information
-    name = "Dr. Jane Doe"
-    field = "Astrophysics"
-    institution = "University of Science"
+    semester = st.text_input("Add / Select Semester")
 
-    # Display basic profile information
-    st.write(f"**Name:** {name}")
-    st.write(f"**Field of Research:** {field}")
-    st.write(f"**Institution:** {institution}")
-    
-    st.image(
-    "https://cdn.pixabay.com/photo/2015/04/23/22/00/tree-736885_1280.jpg",
-    caption="Nature (Pixabay)"
-)
+    if st.button("Create / Load Semester") and semester:
+        st.session_state.semesters.setdefault(semester, {})
 
-elif menu == "Publications":
-    st.title("Publications")
-    st.sidebar.header("Upload and Filter")
+    if semester in st.session_state.semesters:
+        module = st.text_input("Module Name")
 
-    # Upload publications file
-    uploaded_file = st.file_uploader("Upload a CSV of Publications", type="csv")
-    if uploaded_file:
-        publications = pd.read_csv(uploaded_file)
-        st.dataframe(publications)
+        if st.button("Add Module") and module:
+            st.session_state.semesters[semester].setdefault(
+                module,
+                pd.DataFrame(columns=["Assessment", "Mark", "Weight"])
+            )
 
-        # Add filtering for year or keyword
-        keyword = st.text_input("Filter by keyword", "")
-        if keyword:
-            filtered = publications[
-                publications.apply(lambda row: keyword.lower() in row.astype(str).str.lower().values, axis=1)
-            ]
-            st.write(f"Filtered Results for '{keyword}':")
-            st.dataframe(filtered)
+        for mod, df in st.session_state.semesters[semester].items():
+            st.subheader(mod)
+
+            new_row = st.form(key=f"form_{semester}_{mod}")
+            assessment = new_row.text_input("Assessment")
+            mark = new_row.number_input("Mark", 0.0, 100.0)
+            weight = new_row.number_input("Weight", 0.0, 1.0)
+            submitted = new_row.form_submit_button("Add")
+
+            if submitted:
+                df.loc[len(df)] = [assessment, mark, weight]
+
+            st.dataframe(df)
+
+            avg = calculate_weighted_average(df)
+            st.metric("Module Average", f"{avg:.2f}%")
+            st.info(performance_trend(avg))
+            st.write("Study Tip:", study_tips(avg))
+
+            if not df.empty:
+                fig, ax = plt.subplots()
+                ax.plot(df["Assessment"], df["Mark"], marker="o")
+                ax.set_ylim(0, 100)
+                ax.set_title(f"Performance Trend: {mod}")
+                st.pyplot(fig)
+
+# -----------------------------
+# Dashboard Page
+# -----------------------------
+elif page == "Dashboard":
+    st.title("Academic Dashboard")
+
+    all_averages = []
+
+    for semester, modules in st.session_state.semesters.items():
+        for mod, df in modules.items():
+            avg = calculate_weighted_average(df)
+            all_averages.append(avg)
+
+    if all_averages:
+        overall_avg = sum(all_averages) / len(all_averages)
+        st.metric("Overall Academic Average", f"{overall_avg:.2f}%")
+        st.success(performance_trend(overall_avg))
+    else:
+        st.info("No academic data available yet")
+
+# -----------------------------
+# Achievements Page
+# -----------------------------
+elif page == "Achievements":
+    st.title("Personal Achievements")
+
+    with st.form("achievement_form"):
+        title = st.text_input("Title")
+        date = st.date_input("Date", datetime.date.today())
+        desc = st.text_area("Description")
+        submit = st.form_submit_button("Add Achievement")
+
+    if submit:
+        st.session_state.achievements.append({
+            "title": title,
+            "date": date,
+            "description": desc
+        })
+        st.success("Achievement added")
+
+    for ach in st.session_state.achievements:
+        st.subheader(ach["title"])
+        st.caption(ach["date"])
+        st.write(ach["description"])
+
+# -----------------------------
+# Calendar Page
+# -----------------------------
+elif page == "Calendar":
+    st.title("Academic Calendar")
+
+    with st.form("event_form"):
+        event = st.text_input("Event")
+        date = st.date_input("Date")
+        module = st.text_input("Related Module (optional)")
+        submit = st.form_submit_button("Add Event")
+
+    if submit:
+        st.session_state.events.append({
+            "event": event,
+            "date": date,
+            "module": module
+        })
+        st.success("Event added")
+
+    for e in sorted(st.session_state.events, key=lambda x: x["date"]):
+        st.write(f"📅 {e['date']} — {e['event']} ({e['module']})")
+
+# -----------------------------
+# Chatbot Page (Rule-based for v1)
+# -----------------------------
+elif page == "Chatbot":
+    st.title("Academic Assistant")
+
+    query = st.text_input("Ask a question about your academics")
+
+    if query:
+        if "semester" in query.lower():
+            st.write("You are currently managing", len(st.session_state.semesters), "semester(s).")
+        elif "focus" in query.lower():
+            st.write("Focus on modules with averages below 50%.")
+        elif "achievement" in query.lower():
+            st.write("You have", len(st.session_state.achievements), "recorded achievements.")
         else:
-            st.write("Showing all publications")
-
-        # Publication trends
-        if "Year" in publications.columns:
-            st.subheader("Publication Trends")
-            year_counts = publications["Year"].value_counts().sort_index()
-            st.bar_chart(year_counts)
-        else:
-            st.write("The CSV does not have a 'Year' column to visualize trends.")
-
-elif menu == "STEM Data Explorer":
-    st.title("STEM Data Explorer")
-    st.sidebar.header("Data Selection")
-    
-    # Tabbed view for STEM data
-    data_option = st.sidebar.selectbox(
-        "Choose a dataset to explore", 
-        ["Physics Experiments", "Astronomy Observations", "Weather Data"]
-    )
-
-    if data_option == "Physics Experiments":
-        st.write("### Physics Experiment Data")
-        st.dataframe(physics_data)
-        # Add widget to filter by Energy levels
-        energy_filter = st.slider("Filter by Energy (MeV)", 0.0, 10.0, (0.0, 10.0))
-        filtered_physics = physics_data[
-            physics_data["Energy (MeV)"].between(energy_filter[0], energy_filter[1])
-        ]
-        st.write(f"Filtered Results for Energy Range {energy_filter}:")
-        st.dataframe(filtered_physics)
-
-    elif data_option == "Astronomy Observations":
-        st.write("### Astronomy Observation Data")
-        st.dataframe(astronomy_data)
-        # Add widget to filter by Brightness
-        brightness_filter = st.slider("Filter by Brightness (Magnitude)", -15.0, 5.0, (-15.0, 5.0))
-        filtered_astronomy = astronomy_data[
-            astronomy_data["Brightness (Magnitude)"].between(brightness_filter[0], brightness_filter[1])
-        ]
-        st.write(f"Filtered Results for Brightness Range {brightness_filter}:")
-        st.dataframe(filtered_astronomy)
-
-    elif data_option == "Weather Data":
-        st.write("### Weather Data")
-        st.dataframe(weather_data)
-        # Add widgets to filter by temperature and humidity
-        temp_filter = st.slider("Filter by Temperature (°C)", -10.0, 40.0, (-10.0, 40.0))
-        humidity_filter = st.slider("Filter by Humidity (%)", 0, 100, (0, 100))
-        filtered_weather = weather_data[
-            weather_data["Temperature (°C)"].between(temp_filter[0], temp_filter[1]) &
-            weather_data["Humidity (%)"].between(humidity_filter[0], humidity_filter[1])
-        ]
-        st.write(f"Filtered Results for Temperature {temp_filter} and Humidity {humidity_filter}:")
-        st.dataframe(filtered_weather)
-        
-        
-
-elif menu == "Contact":
-    # Add a contact section
-    st.header("Contact Information")
-    email = "jane.doe@example.com"
-    st.write(f"You can reach me at {email}.")
+            st.write("I can help you analyse your performance and plan better study strategies.")

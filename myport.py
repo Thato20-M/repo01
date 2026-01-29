@@ -24,7 +24,7 @@ st.markdown(
     .block-container { padding-top: 1.5rem; }
     h1, h2, h3 { color: #1f2a44; }
     .stMetric {
-        background: transparent;
+        background: lightblue;
         padding: 0;
         border-radius: 0;
     }

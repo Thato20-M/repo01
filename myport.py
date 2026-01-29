@@ -20,10 +20,14 @@ st.set_page_config(
 st.markdown(
     """
     <style>
-    .main { background-color: #9bc4eb; }
+    .main { background-color: #f5f7fb; }
     .block-container { padding-top: 1.5rem; }
     h1, h2, h3 { color: #1f2a44; }
-    .stMetric { background: white; padding: 15px; border-radius: 12px; }
+    .stMetric {
+        background: transparent;
+        padding: 0;
+        border-radius: 0;
+    }
     </style>
     """,
     unsafe_allow_html=True
@@ -112,17 +116,30 @@ if page == "🏠 Dashboard":
     with col1:
         if all_averages:
             overall = sum(all_averages) / len(all_averages)
-            st.metric("Overall Average", f"{overall:.2f}%")
-            st.success(performance_label(overall))
+            st.markdown(
+                f"""
+                <div style="background:#1f2a44;padding:25px;border-radius:16px;color:white;text-align:center">
+                    <h2>Overall Academic Average</h2>
+                    <h1>{overall:.2f}%</h1>
+                    <p>{performance_label(overall)}</p>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
         else:
             st.warning("No academic data yet")
 
     with col2:
-        st.metric("Total Modules", len(all_averages))
+        st.markdown(
+            f"""
+            <div style="background:#ffffff;padding:25px;border-radius:16px;text-align:center">
+                <h3>Total Modules</h3>
+                <h1>{len(all_averages)}</h1>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
 
-# =============================
-# PROFILE
-# =============================
 elif page == "👤 Profile":
     st.title("Student Profile")
 
@@ -239,4 +256,3 @@ elif page == "🤖 Assistant":
             st.write("Your performance updates automatically as you add marks.")
         else:
             st.write("I can help you analyse performance trends and priorities.")
-

@@ -24,7 +24,7 @@ st.markdown(
     .block-container { padding-top: 1.5rem; }
     h1, h2, h3 { color: #1f2a44; }
     .stMetric {
-        background: lightblue;
+        background: transparent;
         padding: 0;
         border-radius: 0;
     }
@@ -118,7 +118,7 @@ if page == "🏠 Dashboard":
             overall = sum(all_averages) / len(all_averages)
             st.markdown(
                 f"""
-                <div style="background:#1f2a44;padding:25px;border-radius:16px;color:#2e5585;text-align:center">
+                <div style="background:#1f2a44;padding:25px;border-radius:16px;color:white;text-align:center">
                     <h2>Overall Academic Average</h2>
                     <h1>{overall:.2f}%</h1>
                     <p>{performance_label(overall)}</p>
@@ -132,7 +132,7 @@ if page == "🏠 Dashboard":
     with col2:
         st.markdown(
             f"""
-            <div style="background:blue;padding:15px;border-radius:16px;text-align:center">
+            <div style="background:#ffffff;padding:25px;border-radius:16px;text-align:center">
                 <h3>Total Modules</h3>
                 <h1>{len(all_averages)}</h1>
             </div>
@@ -143,11 +143,39 @@ if page == "🏠 Dashboard":
 elif page == "👤 Profile":
     st.title("Student Profile")
 
-    st.session_state.profile["name"] = st.text_input("Full Name", st.session_state.profile["name"])
-    st.session_state.profile["email"] = st.text_input("Email", st.session_state.profile["email"])
-    st.session_state.profile["programme"] = st.text_input("Programme", st.session_state.profile["programme"])
+    # Profile picture upload
+    profile_pic = st.file_uploader(
+        "Upload Profile Picture",
+        type=["png", "jpg", "jpeg"],
+        key="profile_pic"
+    )
 
-    st.success("Profile saved")
+    if profile_pic:
+        st.image(profile_pic, width=150)
+
+    # Profile fields
+    st.session_state.profile["name"] = st.text_input(
+        "Full Name",
+        st.session_state.profile["name"]
+    )
+    st.session_state.profile["email"] = st.text_input(
+        "Email",
+        st.session_state.profile["email"]
+    )
+    st.session_state.profile["programme"] = st.text_input(
+        "Programme",
+        st.session_state.profile["programme"]
+    )
+
+    # Validation check
+    if (
+        st.session_state.profile["name"].strip() and
+        st.session_state.profile["email"].strip() and
+        st.session_state.profile["programme"].strip()
+    ):
+        st.success("Profile saved")
+    else:
+        st.info("Please complete all profile fields to save your profile")
 
 # =============================
 # SEMESTERS & MODULES
@@ -256,3 +284,4 @@ elif page == "🤖 Assistant":
             st.write("Your performance updates automatically as you add marks.")
         else:
             st.write("I can help you analyse performance trends and priorities.")
+

@@ -132,7 +132,7 @@ if page == "🏠 Dashboard":
     with col2:
         st.markdown(
             f"""
-            <div style="background:1f2a44;padding:15px;border-radius:16px;text-align:center">
+            <div style="background:blue;padding:15px;border-radius:16px;text-align:center">
                 <h3>Total Modules</h3>
                 <h1>{len(all_averages)}</h1>
             </div>

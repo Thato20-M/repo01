@@ -7,6 +7,13 @@ from streamlit_calendar import calendar
 from ml.feature_engineering import build_features
 from ml.predictor import AcademicPredictor
 from ml.train_model import AcademicModelTrainer, build_training_set
+
+# =============================
+# LLM SUPPORT (PHASE 3E)
+# =============================
+from services.context_builder import build_llm_context
+from services.assistant import generate_llm_prompt
+
 # =============================
 # PAGE CONFIG + THEME
 # =============================

@@ -4,6 +4,9 @@ import datetime
 import matplotlib.pyplot as plt
 from streamlit_calendar import calendar
 
+from ml.feature_engineering import build_features
+from ml.predictor import AcademicPredictor
+from ml.train_model import AcademicModelTrainer, build_training_set
 # =============================
 # PAGE CONFIG + THEME
 # =============================

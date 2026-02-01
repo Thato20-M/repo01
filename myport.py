@@ -293,7 +293,38 @@ elif page == "🤖 Assistant":
 
     user_query = st.text_input("Ask for academic advice")
 
-    if user_query:
-        context = build_llm_context(df)
-        response = generate_llm_prompt(user_query, context)
-        st.write(response)
+# -------------------------------
+# LOAD PROFILE
+# -------------------------------
+conn = get_conn()
+profile_df = pd.read_sql(
+    "SELECT name, programme FROM profiles WHERE id = 1",
+    conn
+)
+conn.close()
+
+profile = {
+    "name": profile_df.iloc[0]["name"] if not profile_df.empty else "Student",
+    "degree": profile_df.iloc[0]["programme"] if not profile_df.empty else ""
+}
+
+achievements = []   # (you can wire DB later)
+events = []         # (calendar integration later)
+
+# -------------------------------
+# BUILD PREDICTIONS
+# -------------------------------
+
+predictions = {}
+
+if not df.empty:
+    features = build_features(df)
+    predictor = AcademicPredictor()
+
+    next_mark, risk_prob = predictor.predict(features)
+
+    predictions["Overall"] = {
+        "next_mark": next_mark,
+        "risk_prob": risk_prob
+    }
+

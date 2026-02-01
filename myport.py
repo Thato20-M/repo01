@@ -72,7 +72,7 @@ h1, h2, h3 {
     color: #1f2a44;
 }
 .card {
-    background: #89CFF0;
+    background: #054b85;
     padding: 24px;
     border-radius: 16px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.08);

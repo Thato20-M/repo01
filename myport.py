@@ -1,297 +1,299 @@
 import streamlit as st
 import pandas as pd
-import datetime
 import matplotlib.pyplot as plt
+import sqlite3
+import datetime
 from streamlit_calendar import calendar
 
+# =============================
+# 🔥 KEEP ML + LLM IMPORTS
+# =============================
 from ml.feature_engineering import build_features
 from ml.predictor import AcademicPredictor
-from ml.train_model import AcademicModelTrainer, build_training_set
-
-# =============================
-# LLM SUPPORT (PHASE 3E)
-# =============================
 from services.context_builder import build_llm_context
 from services.assistant import generate_llm_prompt
 
+
+def get_conn():
+    return sqlite3.connect("academic.db", check_same_thread=False)
+
 # =============================
-# PAGE CONFIG + THEME
+# PAGE CONFIG
 # =============================
 st.set_page_config(
     page_title="Academic Progress Tracker",
     page_icon="🎓",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    layout="wide"
 )
 
 # =============================
-# GLOBAL STYLING (CSS)
+# DATABASE (PERSISTENT)
 # =============================
-st.markdown(
-    """
-    <style>
-    .main { background-color: #f5f7fb; }
-    .block-container { padding-top: 1.5rem; }
-    h1, h2, h3 { color: #1f2a44; }
-    .stMetric {
-        background: transparent;
-        padding: 0;
-        border-radius: 0;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True
-)
+def init_db():
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS profiles (
+        id INTEGER PRIMARY KEY,
+        name TEXT,
+        email TEXT,
+        programme TEXT,
+        photo BLOB
+    )
+    """)
+
+    cur.execute("""
+    CREATE TABLE IF NOT EXISTS assessments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        semester TEXT,
+        module TEXT,
+        assessment TEXT,
+        mark REAL,
+        weight REAL
+    )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+init_db()
 
 # =============================
-# SESSION STATE INIT
+# GLOBAL STYLING
 # =============================
-if "profile" not in st.session_state:
-    st.session_state.profile = {
-        "name": "",
-        "email": "",
-        "programme": ""
-    }
-
-if "semesters" not in st.session_state:
-    st.session_state.semesters = {}
-
-if "achievements" not in st.session_state:
-    st.session_state.achievements = []
-
-if "events" not in st.session_state:
-    st.session_state.events = []
+st.markdown("""
+<style>
+.main {
+    background: linear-gradient(135deg, #f4f6fb, #eef1f8);
+}
+h1, h2, h3 {
+    color: #1f2a44;
+}
+.card {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+}
+.metric {
+    font-size: 38px;
+    font-weight: bold;
+}
+</style>
+""", unsafe_allow_html=True)
 
 # =============================
-# HELPER FUNCTIONS
+# HELPERS
 # =============================
-def calculate_weighted_average(df):
+def weighted_average(df):
     if df.empty:
         return 0
-    if "Weight" in df.columns and df["Weight"].sum() > 0:
-        return (df["Mark"] * df["Weight"]).sum() / df["Weight"].sum()
-    return df["Mark"].mean()
+    if df["weight"].sum() > 0:
+        return (df["mark"] * df["weight"]).sum() / df["weight"].sum()
+    return df["mark"].mean()
 
-
-def performance_label(avg):
+def risk_label(avg):
     if avg >= 70:
-        return "🟢 Strong"
+        return "🟢 Low Risk"
     elif avg >= 50:
-        return "🟡 Needs Attention"
-    return "🔴 At Risk"
-
-
-def study_tip(avg):
-    if avg >= 70:
-        return "Maintain consistency and start revision early."
-    elif avg >= 50:
-        return "Focus on weak topics and practice active recall."
-    return "Book consultations, create a strict study plan, and revise fundamentals."
+        return "🟡 Medium Risk"
+    return "🔴 High Risk"
 
 # =============================
-# SIDEBAR NAVIGATION (IMPROVED)
+# SIDEBAR
 # =============================
-st.sidebar.markdown("## 🎓 Academic Tracker")
-st.sidebar.markdown("---")
+st.sidebar.title("🎓 Academic Tracker")
 
 page = st.sidebar.radio(
     "Navigation",
     [
-        "🏠 Dashboard",
+        "📊 Dashboard",
         "👤 Profile",
-        "📚 Semesters & Modules",
-        "📊 Achievements",
-        "🗓️ Calendar",
-        "🤖 Assistant",
+        "📚 Modules",
+        "📈 Trends",
+        "🤖 Assistant"
     ]
 )
-
-st.sidebar.markdown("---")
-st.sidebar.info("Phase 1 • Streamlit Academic App")
 
 # =============================
 # DASHBOARD
 # =============================
-if page == "🏠 Dashboard":
-    st.title("Academic Dashboard")
+if page == "📊 Dashboard":
+    st.title("Academic Overview")
 
-    all_averages = []
+    conn = get_conn()
+    df = pd.read_sql("SELECT * FROM assessments", conn)
+    conn.close()
 
-    for semester, modules in st.session_state.semesters.items():
-        for mod, df in modules.items():
-            all_averages.append(calculate_weighted_average(df))
+    if df.empty:
+        st.info("No academic data yet.")
+    else:
+        overall_avg = weighted_average(df)
 
-    col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
 
-    with col1:
-        if all_averages:
-            overall = sum(all_averages) / len(all_averages)
-            st.markdown(
-                f"""
-                <div style="background:#1f2a44;padding:25px;border-radius:16px;color:white;text-align:center">
-                    <h2>Overall Academic Average</h2>
-                    <h1>{overall:.2f}%</h1>
-                    <p>{performance_label(overall)}</p>
-                </div>
-                """,
-                unsafe_allow_html=True
-            )
-        else:
-            st.warning("No academic data yet")
-
-    with col2:
-        st.markdown(
-            f"""
-            <div style="background:#ffffff;padding:25px;border-radius:16px;text-align:center">
-                <h3>Total Modules</h3>
-                <h1>{len(all_averages)}</h1>
+        with col1:
+            st.markdown(f"""
+            <div class="card">
+                <h3>Overall Average</h3>
+                <div class="metric">{overall_avg:.2f}%</div>
             </div>
-            """,
-            unsafe_allow_html=True
-        )
+            """, unsafe_allow_html=True)
 
+        with col2:
+            st.markdown(f"""
+            <div class="card">
+                <h3>Risk Status</h3>
+                <div class="metric">{risk_label(overall_avg)}</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        with col3:
+            st.markdown(f"""
+            <div class="card">
+                <h3>Total Assessments</h3>
+                <div class="metric">{len(df)}</div>
+            </div>
+            """, unsafe_allow_html=True)
+#--------------------------------
+#Profile
+#-------------------------------
 elif page == "👤 Profile":
     st.title("Student Profile")
 
-    # Profile picture upload
+    conn = get_conn()
+    cur = conn.cursor()
+
+    # Load profile
+    cur.execute(
+        "SELECT name, email, programme, photo FROM profiles WHERE id = 1"
+    )
+    row = cur.fetchone()
+
+    name, email, programme, photo = row if row else ("", "", "", None)
+
+    # Profile picture
     profile_pic = st.file_uploader(
         "Upload Profile Picture",
-        type=["png", "jpg", "jpeg"],
-        key="profile_pic"
+        type=["png", "jpg", "jpeg"]
     )
 
-    if profile_pic:
-        st.image(profile_pic, width=150)
+    if photo:
+        st.image(photo, width=150)
 
     # Profile fields
-    st.session_state.profile["name"] = st.text_input(
-        "Full Name",
-        st.session_state.profile["name"]
-    )
-    st.session_state.profile["email"] = st.text_input(
-        "Email",
-        st.session_state.profile["email"]
-    )
-    st.session_state.profile["programme"] = st.text_input(
-        "Programme",
-        st.session_state.profile["programme"]
-    )
+    name = st.text_input("Full Name", name)
+    email = st.text_input("Email", email)
+    programme = st.text_input("Programme", programme)
 
-    # Validation check
-    if (
-        st.session_state.profile["name"].strip() and
-        st.session_state.profile["email"].strip() and
-        st.session_state.profile["programme"].strip()
-    ):
-        st.success("Profile saved")
-    else:
-        st.info("Please complete all profile fields to save your profile")
+    if st.button("Save Profile"):
+        if name and email and programme:
+            cur.execute("""
+                INSERT OR REPLACE INTO profiles
+                (id, name, email, programme, photo)
+                VALUES (1, ?, ?, ?, ?)
+            """, (
+                name,
+                email,
+                programme,
+                profile_pic.read() if profile_pic else photo
+            ))
+
+            conn.commit()
+            st.success("✅ Profile saved successfully")
+        else:
+            st.warning("Please complete all profile fields")
+
+    conn.close()
 
 # =============================
-# SEMESTERS & MODULES
+# MODULE ENTRY
 # =============================
-elif page == "📚 Semesters & Modules":
-    st.title("Semesters & Modules")
+elif page == "📚 Modules":
+    st.title("Modules & Assessments")
 
-    semester = st.text_input("Semester Name")
-    if st.button("Create / Load Semester") and semester:
-        st.session_state.semesters.setdefault(semester, {})
+    semester = st.text_input("Semester")
+    module = st.text_input("Module")
 
-    if semester in st.session_state.semesters:
-        module = st.text_input("Module Name")
-        if st.button("Add Module") and module:
-            st.session_state.semesters[semester].setdefault(
-                module,
-                pd.DataFrame(columns=["Assessment", "Mark", "Weight"])
-            )
+    with st.form("assessment_form"):
+        assessment = st.text_input("Assessment Name")
+        mark = st.number_input("Mark", 0.0, 100.0)
+        weight = st.number_input("Weight (0–1)", 0.0, 1.0)
+        submit = st.form_submit_button("Save Assessment")
 
-        for mod, df in st.session_state.semesters[semester].items():
-            st.subheader(mod)
+    if submit and semester and module:
+        conn = get_conn()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO assessments (semester, module, assessment, mark, weight)
+            VALUES (?, ?, ?, ?, ?)
+        """, (semester, module, assessment, mark, weight))
+        conn.commit()
+        conn.close()
+        st.success("Assessment saved")
 
-            with st.form(f"form_{semester}_{mod}"):
-                assessment = st.text_input("Assessment")
-                mark = st.number_input("Mark", 0.0, 100.0)
-                weight = st.number_input("Weight", 0.0, 1.0)
-                submit = st.form_submit_button("Add Assessment")
+    if semester and module:
+        conn = get_conn()
+        df = pd.read_sql("""
+            SELECT assessment, mark, weight
+            FROM assessments
+            WHERE semester=? AND module=?
+        """, conn, params=(semester, module))
+        conn.close()
 
-            if submit:
-                df.loc[len(df)] = [assessment, mark, weight]
-
+        if not df.empty:
+            avg = weighted_average(df)
+            st.metric("Module Average", f"{avg:.2f}%", risk_label(avg))
             st.dataframe(df, use_container_width=True)
 
-            avg = calculate_weighted_average(df)
-            st.metric("Module Average", f"{avg:.2f}%", performance_label(avg))
-            st.info(study_tip(avg))
+# =============================
+# TRENDS
+# =============================
+elif page == "📈 Trends":
+    st.title("Performance Trends")
 
-            if not df.empty:
-                fig, ax = plt.subplots()
-                ax.plot(df["Assessment"], df["Mark"], marker="o")
-                ax.set_ylim(0, 100)
-                ax.set_title("Performance Trend")
-                st.pyplot(fig)
+    conn = get_conn()
+    df = pd.read_sql("SELECT * FROM assessments", conn)
+    conn.close()
+
+    if df.empty:
+        st.warning("No data to visualize.")
+    else:
+        trend = (
+            df.groupby("semester")
+              .apply(weighted_average)
+              .reset_index(name="Average")
+        )
+
+        fig, ax = plt.subplots()
+        ax.plot(trend["semester"], trend["Average"], marker="o")
+        ax.set_ylim(0, 100)
+        ax.set_ylabel("Average (%)")
+        ax.set_title("Academic Performance Over Semesters")
+        st.pyplot(fig)
 
 # =============================
-# ACHIEVEMENTS
-# =============================
-elif page == "📊 Achievements":
-    st.title("Achievements")
-
-    with st.form("achievement_form"):
-        title = st.text_input("Title")
-        date = st.date_input("Date", datetime.date.today())
-        desc = st.text_area("Description")
-        submit = st.form_submit_button("Add")
-
-    if submit:
-        st.session_state.achievements.append({
-            "title": title,
-            "date": date,
-            "description": desc
-        })
-        st.success("Achievement added")
-
-    for ach in st.session_state.achievements:
-        st.markdown(f"### 🏆 {ach['title']}")
-        st.caption(ach['date'])
-        st.write(ach['description'])
-
-# =============================
-# CALENDAR (API-BASED)
-# =============================
-elif page == "🗓️ Calendar":
-    st.title("Academic Calendar")
-
-    with st.form("event_form"):
-        title = st.text_input("Event")
-        date = st.date_input("Date")
-        submit = st.form_submit_button("Add Event")
-
-    if submit:
-        st.session_state.events.append({
-            "title": title,
-            "start": date.isoformat(),
-        })
-
-    calendar_options = {
-        "initialView": "dayGridMonth",
-        "height": 600,
-    }
-
-    calendar(events=st.session_state.events, options=calendar_options)
-
-# =============================
-# ASSISTANT
+# ASSISTANT (ML + LLM)
 # =============================
 elif page == "🤖 Assistant":
     st.title("Academic Assistant")
 
-    q = st.text_input("Ask about your academics")
+    conn = get_conn()
+    df = pd.read_sql("SELECT * FROM assessments", conn)
+    conn.close()
 
-    if q:
-        if "focus" in q.lower():
-            st.write("Focus on modules marked 🔴 At Risk.")
-        elif "average" in q.lower():
-            st.write("Your performance updates automatically as you add marks.")
-        else:
-            st.write("I can help you analyse performance trends and priorities.")
+    if not df.empty:
+        features = build_features(df)
+        predictor = AcademicPredictor()
+        risk_prediction = predictor.predict(features)
 
+        st.info(f"📌 Predicted Academic Risk: **{risk_prediction}**")
+
+    user_query = st.text_input("Ask for academic advice")
+
+    if user_query:
+        context = build_llm_context(df)
+        response = generate_llm_prompt(user_query, context)
+        st.write(response)

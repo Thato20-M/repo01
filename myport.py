@@ -116,7 +116,7 @@ page = st.sidebar.radio(
         
     ]
 )
-st.sidebar.title("Dashboard in develpment by Thato ;-)")
+st.sidebar.write("Dashboard in develpment by Thato ;-)")
 # =============================
 # DASHBOARD
 # =============================

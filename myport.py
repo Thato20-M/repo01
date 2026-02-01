@@ -66,13 +66,13 @@ init_db()
 st.markdown("""
 <style>
 .main {
-    background: linear-gradient(135deg, #f4f6fb, #eef1f8);
+    background: linear-gradient(135deg, #f4f6fb, #5199c2);
 }
 h1, h2, h3 {
     color: #1f2a44;
 }
 .card {
-    background: azure;
+    background: #89CFF0;
     padding: 24px;
     border-radius: 16px;
     box-shadow: 0 8px 24px rgba(0,0,0,0.08);

@@ -311,6 +311,14 @@ profile = {
 achievements = []   # (you can wire DB later)
 events = []         # (calendar integration later)
 
+context = build_llm_context(
+    profile=profile,
+    semesters={},          # future expansion
+    achievements=achievements,
+    events=events,
+    predictions=predictions
+)
+
 # -------------------------------
 # BUILD PREDICTIONS
 # -------------------------------

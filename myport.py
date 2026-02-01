@@ -292,6 +292,9 @@ elif page == "🤖 Assistant":
         st.info(f"📌 Predicted Academic Risk: **{risk_prediction}**")
 
     user_query = st.text_input("Ask for academic advice")
+    
+response = generate_llm_prompt(context, user_query)
+st.write(response)
 
 # -------------------------------
 # LOAD PROFILE

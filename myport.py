@@ -116,6 +116,9 @@ page = st.sidebar.radio(
         
     ]
 )
+
+
+
 st.sidebar.write("Dashboard in develpment by Thato ;-)")
 # =============================
 # DASHBOARD

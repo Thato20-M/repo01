@@ -113,7 +113,7 @@ page = st.sidebar.radio(
         "👤 Profile",
         "📚 Modules",
         "📈 Trends",
-        "🤖 Assistant"
+        
     ]
 )
 
